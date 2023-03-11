@@ -20,8 +20,9 @@ class TestPhoenix14(unittest.TestCase):
 
     def test_phoenix14(self):
         data_root = r'/home/jingyan/pycharm_remote/csi_sign_language_home_win11/dataset/phoenix2014-release'
-        dataset = Phoenix14Dataset(data_root)
-        a = dataset[0]
+        dataset = Phoenix14Dataset(data_root, length_time=500, length_glosses=40)
+        for frames, annotation in dataset:
+            print(frames.shape, annotation.shape)
         len(dataset)
 
 if __name__ == '__main__':
