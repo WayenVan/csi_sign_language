@@ -5,9 +5,11 @@ from itertools import chain
 
 class Dictionary:
 
-    def __init__(self):
+    def __init__(self, d=None):
         self.__d = None
         self.__reverse_d = None
+        if d != None:
+            self.dictionary = d
 
     @property
     def dictionary(self):
