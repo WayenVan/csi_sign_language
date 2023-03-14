@@ -28,9 +28,8 @@ class TestPhoenix14(unittest.TestCase):
 
             e = enumerate(gen)
             _, frame = next(e)
-            _, frame = next(e)
             results = holistic_recognition(frame, holistic)
-
+            print(results)
 
     def test_phoenix14(self):
         data_root = r'/home/jingyan/pycharm_remote/csi_sign_language_home_win11/dataset/phoenix2014-release'
