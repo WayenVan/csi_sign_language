@@ -5,6 +5,7 @@ import numpy as np
 import collections
 from typing import Tuple, List
 import matplotlib.pyplot as plt
+import scipy.signal as s
 
 class VelocityCalculator:
     def __init__(self, buffer_size=10, time_gap=1.):
@@ -34,7 +35,7 @@ class VelocityCalculator:
             ret.append(v)
 
         return tuple(ret)
-
+            
 
 def main():
     data_dir = r'/home/jingyan/pycharm_remote/csi_sign_language_uni_laptop/dataset/phoenix2014-release/phoenix-2014' \
@@ -59,18 +60,21 @@ def main():
         v_r = np.stack(velocity[2])
 
         plt.figure(figsize=(10, 6))
-        for landmark in (20, 22, 18, 16, 14 ,12, 24, 23 ,11, 13, 21, 15, 19, 17):
+        # for landmark in (20, 22, 18, 16, 14 ,12, 24, 23 ,11, 13, 21, 15, 19, 17):
+        for landmark in (21, 22, 17, 19):
             x = v_p[:, landmark, 0]
             y = v_p[:, landmark, 1]
             vvv = np.sqrt(x**2, y**2)
+            vvv = s.medfilt(vvv, 9)
             plt.plot(vvv, linestyle='-', label=str(landmark))
 
         plt.legend()
-        plt.title('velocity changing')
+        plt.title('medfiltered velocity changing')
         plt.xlabel('frame')
         plt.ylabel('normalized velocity')
         plt.ylim(-0.02, .2)
-        plt.savefig('resources/velocity.pdf')
+        # plt.savefig('results/experiment/velocity_filtered.pdf')
+        plt.savefig('results/experiment/velocity_22-19.pdf')
 
 if __name__ == '__main__':
     main()
