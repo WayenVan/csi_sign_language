@@ -9,10 +9,12 @@ import numpy as np
 from .utils import VideoGenerator, padding
 from .dictionary import Dictionary
 from  typing import Tuple
+from ..csi_typing import *
+
 class Phoenix14Dataset(Dataset):
 
     def __init__(self, data_root, type='train', multisigner=True, length_time=None, length_glosses=None,
-                 padding_mode='front', gloss_dict=None):
+                 padding_mode : PaddingMode ='front', gloss_dict=None):
         if multisigner:
             annotation_dir = os.path.join(data_root, 'phoenix-2014-multisigner/annotations/manual')
             annotation_file = type + '.corpus.csv'

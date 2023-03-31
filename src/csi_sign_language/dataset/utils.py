@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import mediapipe as mp
 import typing
-
+from ..csi_typing import PaddingMode
 
 class VideoGenerator:
 
@@ -14,7 +14,7 @@ class VideoGenerator:
             yield cv2.imread(file)
 
 
-def padding(data: np.ndarray, axis: int, length: int, padding_mode: str):
+def padding(data: np.ndarray, axis: int, length: int, padding_mode: PaddingMode):
     npad = [[0, 0] for i in data.shape]
     if padding_mode == 'front':
         npad[axis][0] = length - data.shape[axis]
