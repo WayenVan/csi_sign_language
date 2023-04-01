@@ -5,6 +5,8 @@ import glob
 import numpy as np
 import mediapipe as mp
 
+from torch.utils.data import DataLoader
+
 
 class TestPhoenix14(unittest.TestCase):
 
@@ -34,9 +36,14 @@ class TestPhoenix14(unittest.TestCase):
     def test_phoenix14(self):
         data_root = r'/home/jingyan/pycharm_remote/csi_sign_language_home_win11/dataset/phoenix2014-release'
         dataset = Phoenix14Dataset(data_root, length_time=500, length_glosses=40)
+        
         _, data = next(enumerate(dataset))
         self.assertEqual(data[0].shape[0], 500)
         self.assertEqual(data[1].shape[0], 40)
+        
+        loader = DataLoader(dataset, batch_size=32)
+        _, data = next(enumerate(dataset))
+        print(data)
 
 if __name__ == '__main__':
     unittest.main()
