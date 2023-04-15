@@ -11,10 +11,12 @@ from .dictionary import Dictionary
 from  typing import Tuple
 from ..csi_typing import *
 
-class Phoenix14Dataset(Dataset):
+from abc import ABC, abstractmethod
 
+class BasePhoenix14Dataset(Dataset, ABC):
+    
     def __init__(self, data_root, type='train', multisigner=True, length_time=None, length_glosses=None,
-                 padding_mode : PaddingMode ='front', gloss_dict=None):
+                padding_mode : PaddingMode ='front', gloss_dict=None, transform=None):
         if multisigner:
             annotation_dir = os.path.join(data_root, 'phoenix-2014-multisigner/annotations/manual')
             annotation_file = type + '.corpus.csv'
@@ -33,26 +35,14 @@ class Phoenix14Dataset(Dataset):
         self._padding_mode = padding_mode
 
         self.gloss_dict = self._create_glossdictionary() if gloss_dict == None else gloss_dict
+        self._transform = transform
 
     def __len__(self):
         return len(self._annotations)
 
-    def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
-        anno = self._annotations['annotation'].iloc[idx]
-        anno = anno.split()
-        anno = self.gloss_dict.value2index([anno])[0]
-        anno = np.asarray(anno)
-        folder = self._annotations['folder'].iloc[idx]
-        file_list = glob.glob(os.path.join(self._data_root, self._feature_dir, folder))
-        file_list = sorted(file_list, key=lambda x: int(x.split('_')[-1].split('-')[0][2:]))
-        video_gen = VideoGenerator(file_list)
-        frames = [frame for frame in video_gen]
-        # [t, h, w, c]
-        frames = np.stack(frames)
-        # padding
-        frames = padding(frames, 0, self._length_time, self._padding_mode)
-        anno = padding(anno, 0, self._length_gloss, self._padding_mode)
-        return frames, anno
+    @abstractmethod
+    def __getitem__(self, idx):
+        return
 
     def _create_glossdictionary(self):
         d = Dictionary()
@@ -76,3 +66,31 @@ class Phoenix14Dataset(Dataset):
             if l > max:
                 max = l
         return max
+
+
+class Phoenix14Dataset(BasePhoenix14Dataset):
+
+    def __init__(self, data_root, type='train', multisigner=True, length_time=None, length_glosses=None, padding_mode: PaddingMode = 'front', gloss_dict=None, transform=None):
+        super().__init__(data_root, type, multisigner, length_time, length_glosses, padding_mode, gloss_dict, transform)
+    
+
+    def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
+        anno = self._annotations['annotation'].iloc[idx]
+        anno = anno.split()
+        anno = self.gloss_dict.value2index([anno])[0]
+        anno = np.asarray(anno)
+        folder = self._annotations['folder'].iloc[idx]
+        file_list = glob.glob(os.path.join(self._data_root, self._feature_dir, folder))
+        file_list = sorted(file_list, key=lambda x: int(x.split('_')[-1].split('-')[0][2:]))
+        video_gen = VideoGenerator(file_list)
+        frames = [frame if self._transform == None else self._transform(frame)  for frame in video_gen]
+        # [t, h, w, c]
+        frames = np.stack(frames)
+        # padding
+        frames = padding(frames, 0, self._length_time, self._padding_mode)
+        anno = padding(anno, 0, self._length_gloss, self._padding_mode)
+        return frames, anno
+
+
+class Phoenix14DatasetGraph(BasePhoenix14Dataset):
+    pass

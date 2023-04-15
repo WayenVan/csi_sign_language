@@ -21,9 +21,9 @@ class VelocityCalculator:
         """
 
         :param results: results: (pose keypoints, left hand keypoint, right hand keypoints), they are all np.ndarray
-            where: pose keypoints (33, 2),
-                   lef hand keypoints (21, 2),
-                   right hand keypoints (21, 2)
+            where:  pose keypoints (33, 2),
+                    lef hand keypoints (21, 2),
+                    right hand keypoints (21, 2)
         :return (pose velocity, left hand velocity, right hand velocity)
         """
         ret = []

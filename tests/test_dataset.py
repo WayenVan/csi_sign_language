@@ -42,7 +42,7 @@ class TestPhoenix14(unittest.TestCase):
         self.assertEqual(data[1].shape[0], 40)
         
         loader = DataLoader(dataset, batch_size=32)
-        _, data = next(enumerate(dataset))
+        _, data = next(enumerate(loader))
         print(data)
 
 if __name__ == '__main__':
