@@ -4,5 +4,6 @@
 /.vscode
 /.env
 *.code-workspace
+.idea
 
 __pycache__

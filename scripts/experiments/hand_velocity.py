@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
-from csi_sign_language.dataset.utils import VideoGenerator, holistic_recognition
+from csi_sign_language.dataset.utils import VideoGenerator
+from csi_sign_language.dataset.mediapipe_tools import holistic_recognition
 import glob
 import mediapipe as mp
 import numpy as np
@@ -85,8 +86,9 @@ def main():
         plt.xlabel('frame')
         plt.ylabel('normalized velocity')
         plt.ylim(-0.02, .2)
+        plt.show()
         # plt.savefig('results/experiment/velocity_filtered.pdf')
-        plt.savefig('results/experiment/velocity_22-19.pdf')
+        # plt.savefig('results/experiment/velocity_22-19.pdf')
 
 if __name__ == '__main__':
     main()

@@ -1,5 +1,5 @@
 import glob
-
+from collections import Counter
 import cv2 as cv2
 import pandas as pd
 import torch
@@ -10,13 +10,14 @@ from .utils import VideoGenerator, padding
 from .dictionary import Dictionary
 from  typing import Tuple
 from ..csi_typing import *
+from torchtext.vocab import vocab, build_vocab_from_iterator, Vocab
 
 from abc import ABC, abstractmethod
 
 class BasePhoenix14Dataset(Dataset, ABC):
     
     def __init__(self, data_root, type='train', multisigner=True, length_time=None, length_glosses=None,
-                padding_mode : PaddingMode ='front', gloss_dict=None, transform=None):
+                padding_mode : PaddingMode ='front', gloss_dict: Vocab=None, transform=None):
         if multisigner:
             annotation_dir = os.path.join(data_root, 'phoenix-2014-multisigner/annotations/manual')
             annotation_file = type + '.corpus.csv'
@@ -34,7 +35,7 @@ class BasePhoenix14Dataset(Dataset, ABC):
         self._length_gloss = self.max_length_gloss if length_glosses == None else length_glosses
         self._padding_mode = padding_mode
 
-        self.gloss_dict = self._create_glossdictionary() if gloss_dict == None else gloss_dict
+        self.gloss_vocab = self._create_glossdictionary() if gloss_dict == None else gloss_dict
         self._transform = transform
 
     def __len__(self):
@@ -45,9 +46,11 @@ class BasePhoenix14Dataset(Dataset, ABC):
         return
 
     def _create_glossdictionary(self):
-        d = Dictionary()
-        d.fit([annotation.split() for annotation in self._annotations['annotation']])
-        return d
+        def tokens():
+            for annotation in self._annotations['annotation']:
+                yield annotation.split()
+        vocab = build_vocab_from_iterator(tokens(), special_first=True, specials=['<PAD>'])
+        return vocab
 
     @property
     def max_length_time(self):
@@ -77,7 +80,7 @@ class Phoenix14Dataset(BasePhoenix14Dataset):
     def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
         anno = self._annotations['annotation'].iloc[idx]
         anno = anno.split()
-        anno = self.gloss_dict.value2index([anno])[0]
+        anno = self.gloss_vocab.forward(anno)
         anno = np.asarray(anno)
         folder = self._annotations['folder'].iloc[idx]
         file_list = glob.glob(os.path.join(self._data_root, self._feature_dir, folder))
@@ -91,6 +94,3 @@ class Phoenix14Dataset(BasePhoenix14Dataset):
         anno = padding(anno, 0, self._length_gloss, self._padding_mode)
         return frames, anno
 
-
-class Phoenix14DatasetGraph(BasePhoenix14Dataset):
-    pass

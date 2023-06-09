@@ -2,7 +2,6 @@ import numpy as np
 import json as j
 from itertools import chain
 
-
 class Dictionary:
 
     def __init__(self, d=None):
