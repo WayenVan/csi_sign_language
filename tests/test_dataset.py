@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import pytest
-from csi_sign_language.dataset.phoenix14 import VideoGenerator, Phoenix14Dataset
+from csi_sign_language.dataset.phoenix14 import *
 from csi_sign_language.dataset.mediapipe_tools import holistic_recognition
 import glob
 import numpy as np
@@ -47,3 +47,12 @@ def test_phoenix14(phoenix_dir):
     for i in range(len(vocab)):
         assert list(vocab.items())[i][1] == i
 
+def test_phoenix14Seg(phoenix_dir):
+    dataset = Phoenix14SegDatset(phoenix_dir, length_time=500, length_glosses=40)
+    
+    _, (data, label) = next(enumerate(dataset))
+
+    vocab = dataset.gloss_vocab.get_stoi()
+    vocab = OrderedDict(sorted(vocab.items(), key=lambda x: x[1]))
+    for i in range(len(vocab)):
+        assert list(vocab.items())[i][1] == i
