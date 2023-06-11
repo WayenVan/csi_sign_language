@@ -1,4 +1,5 @@
-#! /usr/bin/env python3
+import sys
+sys.path.append('src')
 
 from csi_sign_language.dataset.utils import VideoGenerator
 from csi_sign_language.dataset.mediapipe_tools import holistic_recognition

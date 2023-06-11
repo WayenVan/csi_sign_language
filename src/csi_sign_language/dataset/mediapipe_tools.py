@@ -1,7 +1,6 @@
 import numpy as np
+import cv2 as cv2
 import mediapipe as mp
-import cv2
-
 
 def holistic_recognition(image: np.ndarray, mp_solution: mp.solutions.holistic.Holistic):
     """

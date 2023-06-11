@@ -12,15 +12,22 @@ class VideoGenerator:
         for file in self.__frame_list:
             yield cv2.imread(file)
 
-
 def padding(data: np.ndarray, axis: int, length: int, padding_mode: PaddingMode):
+
+    delta_legnth = length - data.shape[axis]
+
     npad = [[0, 0] for i in data.shape]
     if padding_mode == 'front':
-        npad[axis][0] = length - data.shape[axis]
+        npad[axis][0] = delta_legnth
+        mask = np.ones(length)
+        mask[:delta_legnth] = 0
     elif padding_mode == 'back':
-        npad[axis][1] = length - data.shape[axis]
+        npad[axis][1] = delta_legnth
+        mask = np.ones(length)
+        mask[-delta_legnth:] = 0
     else:
         raise Exception('padding_mode should be front or back')
-    return np.pad(data, npad, mode='constant', constant_values=0)
+    return np.pad(data, npad, mode='constant', constant_values=0), np.ma.make_mask(mask)
+
 
 

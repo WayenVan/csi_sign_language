@@ -1,24 +1,35 @@
+import sys
+sys.path.append('src')
+
+from csi_sign_language.dataset.mediapipe_tools import holistic_recognition
 from collections import OrderedDict
 import pytest
 from csi_sign_language.dataset.phoenix14 import *
-from csi_sign_language.dataset.mediapipe_tools import holistic_recognition
 import glob
 import numpy as np
 import mediapipe as mp
 from pathlib import Path
 import os
+import matplotlib.pyplot as plt
 
 from torch.utils.data import DataLoader
 
-@pytest.fixture
+
+# @pytest.fixture
 def phoenix_dir():
     return os.path.join(Path(__file__).resolve().parent, '../dataset/phoenix2014-release')
 
 
-def test_VideoGenerator():
-    video_dir = r'/home/jingyan/pycharm_remote/csi_sign_language_uni_laptop/dataset/phoenix2014-release/phoenix' \
-                r'-2014-multisigner/features/fullFrame-210x260px/dev/01April_2010_Thursday_heute_default-1/1/*.png'
-    gen = VideoGenerator(glob.glob(video_dir))
+def test_VideoGenerator(phoenix_dir):
+    video_dir = r'phoenix-2014-multisigner/features/fullFrame-210x260px/dev/01April_2010_Thursday_heute_default-1/1/*.png'
+    video_dir = os.path.join(phoenix_dir, video_dir)
+    file_list = glob.glob(video_dir)
+    file_list = sorted(file_list, key=lambda x: int(x.split('_')[-1].split('-')[0][2:]))
+
+    gen = VideoGenerator(file_list)
+    for frame in gen:
+        cv2.imshow('video', frame)
+        cv2.waitKey(30)
 
 def test_mediaPipe():
     mp_holistic = mp.solutions.holistic
@@ -50,9 +61,14 @@ def test_phoenix14(phoenix_dir):
 def test_phoenix14Seg(phoenix_dir):
     dataset = Phoenix14SegDatset(phoenix_dir, length_time=500, length_glosses=40)
     
-    _, (data, label) = next(enumerate(dataset))
+    _, (data, label, mask) = next(enumerate(dataset))
 
-    vocab = dataset.gloss_vocab.get_stoi()
-    vocab = OrderedDict(sorted(vocab.items(), key=lambda x: x[1]))
-    for i in range(len(vocab)):
-        assert list(vocab.items())[i][1] == i
+    vocab = dataset.frame_level_vocab.get_stoi()
+    assert vocab['<PAD>'] == 0
+    assert vocab['ABEND2'] == 12
+    
+    result = dataset.frame_level_vocab.lookup_tokens(label)
+    print(result)
+
+if __name__ == '__main__':
+    test_phoenix14Seg(phoenix_dir())

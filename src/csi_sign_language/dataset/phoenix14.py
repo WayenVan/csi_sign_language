@@ -1,8 +1,6 @@
 import glob
-from collections import Counter
 import cv2 as cv2
 import pandas as pd
-import torch
 from torch.utils.data import Dataset
 import os
 import numpy as np
@@ -13,8 +11,11 @@ from .dictionary import Dictionary
 from  typing import Tuple, List
 from ..csi_typing import *
 from torchtext.vocab import vocab, build_vocab_from_iterator, Vocab
+from collections import OrderedDict
+from pathlib import Path
 
 from abc import ABC, abstractmethod
+
 
 class BasePhoenix14Dataset(Dataset, ABC):
     
@@ -74,7 +75,7 @@ class BasePhoenix14Dataset(Dataset, ABC):
 
 class Phoenix14Dataset(BasePhoenix14Dataset):
     """
-    Dataset for general RGB image with gloss label, the output is (frames, gloss_labels)
+    Dataset for general RGB image with gloss label, the output is (frames, gloss_labels, frames_padding_mask, gloss_padding_mask)
     """
     def __init__(self, data_root, type='train', multisigner=True, length_time=None, length_glosses=None, padding_mode: PaddingMode = 'front', gloss_dict=None, img_transform=None):
         super().__init__(data_root, type, multisigner, length_time, length_glosses, padding_mode, gloss_dict)
@@ -95,9 +96,10 @@ class Phoenix14Dataset(BasePhoenix14Dataset):
         frames: np.ndarray = np.stack(frames)
 
         # padding
-        frames = padding(frames, 0, self._length_time, self._padding_mode)
-        anno = padding(anno, 0, self._length_gloss, self._padding_mode)
-        return frames, anno
+        frames, frames_mask = padding(frames, 0, self._length_time, self._padding_mode)
+        anno, anno_mask = padding(anno, 0, self._length_gloss, self._padding_mode)
+        
+        return frames, anno, frames_mask, anno_mask
     
     def _get_frame_file_list_from_annotation(self, folder: str) -> List[str]:
         """return frame file list with the frame order"""
@@ -109,17 +111,51 @@ class Phoenix14Dataset(BasePhoenix14Dataset):
 
 class Phoenix14SegDatset(Phoenix14Dataset):
     """
-    Dataset for frame level segmentation, the output is (frames, frames_level_annotation) 
+    Dataset for frame level segmentation, only multi train and multisigner is avialiable
+    the output is (frames, frames_level_annotation) 
 
     """
-    def __init__(self, data_root, type='train', length_time=None, length_glosses=None, padding_mode: PaddingMode = 'front', gloss_dict=None, img_transform=None):
-        super().__init__(data_root, type, True, length_time, length_glosses, padding_mode, gloss_dict, img_transform)
+    def __init__(self, data_root, length_time=None, length_glosses=None, padding_mode: PaddingMode = 'front', gloss_dict=None, img_transform=None):
+        super().__init__(data_root, 'train', True, length_time, length_glosses, padding_mode, gloss_dict, img_transform)
         self._frame_level_annotations_relative_path: str = 'phoenix-2014-multisigner/annotations/automatic'
-
         self._path_to_training_classes_txt: str= os.path.join(data_root, self._frame_level_annotations_relative_path, 'trainingClasses.txt')
-        self._traning_classes: pd.DataFrame = pd.read_csv(self._path_to_training_classes_txt)
-        self._frame_level_vocab: Vocab = build_vocab_from_iterator(iterator=self._traning_classes['signstate classlabel'])
+        self._path_to_alignment: str = os.path.join(data_root, self._frame_level_annotations_relative_path, 'train.alignment')
+        self.frame_level_vocab = self._create_vocab()
+        self.alignment = pd.read_csv(self._path_to_alignment, index_col=0, header=None, sep=" ")
+
     
     def __getitem__(self, idx):
         
-        return super().__getitem__(idx)
+        folder: str = self._annotations['folder'].iloc[idx]
+        frame_files: List[str] = self._get_frame_file_list_from_annotation(folder)
+        frame_files_relative: List[str] = [self._remove_root_dir_from_directory(dir) for dir in frame_files]
+
+        # read label into numpy
+        anno_frame_levels = [self.alignment.loc[frame].item() + 1 for frame in frame_files_relative]
+        
+        # read video frames from super
+        frames, _, frames_mask, _ = super().__getitem__(idx)
+        
+        # padding frame level annotations
+        anno_frame_levels, anno_mask = padding(np.array(anno_frame_levels), 0, self._length_time, self._padding_mode)
+        assert np.array_equal(frames_mask, anno_mask)
+
+        mask = frames_mask
+        return frames, anno_frame_levels, mask
+        
+
+    def _create_vocab(self):
+        _training_classes: pd.DataFrame = pd.read_csv(self._path_to_training_classes_txt, delimiter=' ')
+        class_dict: List[Tuple[str, int]] = [(row['signstate'], 1) \
+                                            for index, row in _training_classes.iterrows()]
+        class_dict: OrderedDict = OrderedDict(class_dict)
+        return vocab(class_dict, specials=['<PAD>'])
+    
+    def _remove_root_dir_from_directory(self, dir: str):
+        root_dirs = Path(self._data_root)
+        target_dirs = Path(dir)
+        ret = target_dirs.relative_to(root_dirs)
+        ret = Path(*ret.parts[1:])
+        return str(ret)
+        
+        
