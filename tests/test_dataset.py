@@ -1,7 +1,7 @@
 import sys
 sys.path.append('src')
 
-from csi_sign_language.dataset.mediapipe_tools import holistic_recognition
+from csi_sign_language.dataset.utils import holistic_recognition
 from collections import OrderedDict
 import pytest
 from csi_sign_language.dataset.phoenix14 import *
@@ -59,16 +59,19 @@ def test_phoenix14(phoenix_dir):
         assert list(vocab.items())[i][1] == i
 
 def test_phoenix14Seg(phoenix_dir):
-    dataset = Phoenix14SegDatset(phoenix_dir, length_time=500, length_glosses=40)
+    dataset = Phoenix14SegDatset(phoenix_dir, length_time=350, length_glosses=40, padding_mode='back')
     
-    _, (data, label, mask) = next(enumerate(dataset))
+    data, label, mask = dataset[200]
 
     vocab = dataset.frame_level_vocab.get_stoi()
     assert vocab['<PAD>'] == 0
     assert vocab['ABEND2'] == 12
     
-    result = dataset.frame_level_vocab.lookup_tokens(label)
-    print(result)
-
+    label_intext = dataset.frame_level_vocab.lookup_tokens(label)
+    for idx, frame in enumerate(data):
+        cv2.putText(frame, label_intext[idx], (0, 200), cv2.FONT_HERSHEY_DUPLEX, 1., (255,0,0), 1)
+        cv2.imshow('video', frame)
+        cv2.waitKey(30)
+        
 if __name__ == '__main__':
     test_phoenix14Seg(phoenix_dir())

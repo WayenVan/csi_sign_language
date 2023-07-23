@@ -113,6 +113,7 @@ class Phoenix14SegDatset(Phoenix14Dataset):
     """
     Dataset for frame level segmentation, only multi train and multisigner is avialiable
     the output is (frames, frames_level_annotation) 
+    special token added: <PAD>, so all classes index will +1 !!!!!
 
     """
     def __init__(self, data_root, length_time=None, length_glosses=None, padding_mode: PaddingMode = 'front', gloss_dict=None, img_transform=None):
@@ -120,8 +121,10 @@ class Phoenix14SegDatset(Phoenix14Dataset):
         self._frame_level_annotations_relative_path: str = 'phoenix-2014-multisigner/annotations/automatic'
         self._path_to_training_classes_txt: str= os.path.join(data_root, self._frame_level_annotations_relative_path, 'trainingClasses.txt')
         self._path_to_alignment: str = os.path.join(data_root, self._frame_level_annotations_relative_path, 'train.alignment')
+        
         self.frame_level_vocab = self._create_vocab()
         self.alignment = pd.read_csv(self._path_to_alignment, index_col=0, header=None, sep=" ")
+        self.no_sign_token = 'si'
 
     
     def __getitem__(self, idx):
@@ -157,5 +160,4 @@ class Phoenix14SegDatset(Phoenix14Dataset):
         ret = target_dirs.relative_to(root_dirs)
         ret = Path(*ret.parts[1:])
         return str(ret)
-        
-        
+    
