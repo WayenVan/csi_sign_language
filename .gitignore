@@ -6,4 +6,6 @@
 *.code-workspace
 .idea
 
-__pycache__
+/resources
+__pycache__/*
+.pytest_cache

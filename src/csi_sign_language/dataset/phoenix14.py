@@ -4,15 +4,18 @@ import pandas as pd
 from torch.utils.data import Dataset
 import os
 import numpy as np
-
+from einops import rearrange
+import networkx as nx
 from csi_sign_language.csi_typing import PaddingMode
-from .utils import VideoGenerator, padding
+from .utils import VideoGenerator, padding, hand_recognition
 from .dictionary import Dictionary
-from  typing import Tuple, List
+from  typing import Any, Tuple, List
 from ..csi_typing import *
 from torchtext.vocab import vocab, build_vocab_from_iterator, Vocab
 from collections import OrderedDict
 from pathlib import Path
+from mediapipe.tasks.python.vision import HandLandmarksConnections
+
 
 from abc import ABC, abstractmethod
 
@@ -108,6 +111,64 @@ class Phoenix14Dataset(BasePhoenix14Dataset):
         return file_list
         
 
+class SegCollateGraph:
+    
+    def __init__(self, detector, clip_size=32) -> None:
+        self.clip_size = clip_size
+        self.detector = detector
+    
+    def __call__(self, collected_tuple):
+        data, label, mask = zip(*collected_tuple)
+        #[[s, h, w, c]...]
+        data = np.stack(data)
+        label = np.stack(label)
+        mask = np.stack(mask)
+
+        #[b, s, h, w, c]
+        assert data.shape[1] % self.clip_size == 0, f'the number for frames must be must be an integer multiple of {self.clip_size}'
+
+        data = rearrange(data, 'b (s clp) h w c -> (b s) clp h w c', clp=self.clip_size)
+        mask = rearrange(mask, 'b (s clp) -> (b s) clp', clp=self.clip_size)
+        label = rearrange(label, 'b (s clp) -> (b s) clp', clp=self.clip_size)
+        
+        adjacency = None
+        b = []
+        for clip in data:
+            attributes_left = []
+            attributes_right = []
+            for frame in clip:
+                result = hand_recognition(frame, detector=self.detector)
+                g = None
+                if 'Left' in result:
+                    g = result['Left']
+                    x, y = self.get_attribute_from_graph(g)
+                    attributes_left.append(np.array([x, y]))
+                else:
+                    attributes_left.append(np.zeros(shape=(2, 21)))
+                
+                if 'Right' in result:
+                    g = result['Right']
+                    x, y = self.get_attribute_from_graph(g)
+                    attributes_right.append(np.array([x, y]))
+                else:
+                    attributes_right.append(np.zeros(shape=(2, 21)))
+                    
+                if g is not None and adjacency is None:
+                    adjacency = nx.adjacency_matrix(g).toarray()
+
+            b.append((np.stack(attributes_left), np.stack(attributes_right)))
+        
+        attributes_left_batch, attributes_right_batch = tuple(zip(*b))
+        attributes_left_batch, attributes_right_batch = np.stack(attributes_left_batch), np.stack(attributes_right_batch)
+        
+        return attributes_left_batch, attributes_right_batch, label, adjacency, mask
+
+    @staticmethod
+    def get_attribute_from_graph(g):
+        a = nx.get_node_attributes(g, 'x').values()
+        x = np.array(list(nx.get_node_attributes(g, 'x').values()))
+        y = np.array(list(nx.get_node_attributes(g, 'y').values()))
+        return x, y
 
 class Phoenix14SegDatset(Phoenix14Dataset):
     """

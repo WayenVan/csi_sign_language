@@ -60,7 +60,6 @@ def test_phoenix14(phoenix_dir):
 
 def test_phoenix14Seg(phoenix_dir):
     dataset = Phoenix14SegDatset(phoenix_dir, length_time=350, length_glosses=40, padding_mode='back')
-    
     data, label, mask = dataset[200]
 
     vocab = dataset.frame_level_vocab.get_stoi()
