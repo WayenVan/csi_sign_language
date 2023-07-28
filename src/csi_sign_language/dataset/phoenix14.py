@@ -15,6 +15,7 @@ from torchtext.vocab import vocab, build_vocab_from_iterator, Vocab
 from collections import OrderedDict
 from pathlib import Path
 from mediapipe.tasks.python.vision import HandLandmarksConnections
+from torch import tensor
 
 
 from abc import ABC, abstractmethod
@@ -154,14 +155,14 @@ class SegCollateGraph:
                     attributes_right.append(np.zeros(shape=(2, 21)))
                     
                 if g is not None and adjacency is None:
-                    adjacency = nx.adjacency_matrix(g).toarray()
+                    adjacency = nx.adjacency_matrix(g)
 
             b.append((np.stack(attributes_left), np.stack(attributes_right)))
         
         attributes_left_batch, attributes_right_batch = tuple(zip(*b))
         attributes_left_batch, attributes_right_batch = np.stack(attributes_left_batch), np.stack(attributes_right_batch)
         
-        return attributes_left_batch, attributes_right_batch, label, adjacency, mask
+        return tensor(attributes_left_batch).transpose(-1, -2), tensor(attributes_right_batch).transpose(-1, -2), tensor(label), tensor(np.stack(adjacency.nonzero())), tensor(mask)
 
     @staticmethod
     def get_attribute_from_graph(g):

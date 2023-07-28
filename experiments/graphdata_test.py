@@ -1,5 +1,6 @@
 import sys
 sys.path.append('src')
+import torch
 
 from torch.utils.data import DataLoader
 import mediapipe as mp
@@ -21,7 +22,7 @@ detector = vision.HandLandmarker.create_from_options(options)
 phoenix_dir = os.path.join(Path(__file__).resolve().parent, '../dataset/phoenix2014-release')
 # STEP 3: Load the input image.
 dataset = Phoenix14SegDatset(phoenix_dir, length_time=320, length_glosses=40, padding_mode='back')
-loader = DataLoader(dataset, collate_fn=SegCollateGraph(detector=detector, clip_size=32))
+loader = DataLoader(dataset, collate_fn=SegCollateGraph(detector=detector, clip_size=32), batch_size=1)
 
 for item in loader:
-    print(item[0].shape)
+    print(item[0].size())
