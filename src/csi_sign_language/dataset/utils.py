@@ -5,6 +5,7 @@ from ..csi_typing import PaddingMode
 import mediapipe as mp
 import networkx as nx
 from mediapipe.tasks.python import vision
+from mediapipe.tasks import python
 
 class VideoGenerator:
 
@@ -74,3 +75,51 @@ def hand_recognition(image: np.ndarray, detector) -> nx.Graph:
 
         ret[name] = G
     return ret
+
+class MediapipeDetector():
+    
+    def __init__(self) -> None:
+        hand_opt = python.BaseOptions(model_asset_path='resources/hand_landmarker.task')
+        options = vision.HandLandmarkerOptions(
+            base_options=hand_opt,
+            num_hands=2
+            )
+        self.hand_detector = vision.HandLandmarker.create_from_options(options)
+
+        pose_opt = python.BaseOptions(model_asset_path='resources/pose_landmarker_lite.task')
+        options = vision.PoseLandmarkerOptions(
+            base_options=pose_opt,
+            output_segmentation_masks=True)
+        self.pose_detector = vision.PoseLandmarker.create_from_options(options)
+
+        self.HAND_CONNECTIONS = vision.HandLandmarksConnections.HAND_CONNECTIONS
+        self.POSE_CONNECTIONS = vision.PoseLandmarksConnections.POSE_LANDMARKS
+    
+    def hand_recognition(self, image: np.ndarray):
+        """
+        see https://developers.google.com/mediapipe/solutions/vision/hand_landmarker#get_started
+        """
+        image_ = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_)
+        detection_result = self.hand_detector.detect(mp_image)
+        assert len(detection_result.handedness) == len(detection_result.hand_landmarks)
+        ret = {}
+        for head, landmarks in list(zip(detection_result.handedness, detection_result.hand_landmarks)):
+            name = head[0].display_name
+            landmarks_np = []
+            for landmark in landmarks:
+                landmarks_np.append(np.array([landmark.x, landmark.y]))
+            ret[name] = np.stack(landmarks_np)
+        
+        return ret
+
+    def pose_recognition(self, image: np.ndarray):
+        image_ = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_)
+        detection_result = self.pose_detector.detect(mp_image)
+        ret = {}
+        landmarks_np = []
+        for landmark in detection_result.pose_landmarks[0]:
+            landmarks_np.append(np.array([landmark.x, landmark.y]))
+        ret['pose'] = np.stack(landmarks_np)
+        return ret

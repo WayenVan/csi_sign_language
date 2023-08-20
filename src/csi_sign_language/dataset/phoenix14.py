@@ -1,22 +1,23 @@
+import os
+import numpy as np
 import glob
 import cv2 as cv2
 import pandas as pd
-from torch.utils.data import Dataset
-import os
-import numpy as np
-from einops import rearrange
-import networkx as nx
-from csi_sign_language.csi_typing import PaddingMode
-from .utils import VideoGenerator, padding, hand_recognition
-from .dictionary import Dictionary
-from  typing import Any, Tuple, List
-from ..csi_typing import *
-from torchtext.vocab import vocab, build_vocab_from_iterator, Vocab
+from typing import Any, Tuple, List
 from collections import OrderedDict
 from pathlib import Path
-from mediapipe.tasks.python.vision import HandLandmarksConnections
-from torch import tensor
 
+import torch
+from torch.utils.data import Dataset
+from torch import tensor
+from torchtext.vocab import vocab, build_vocab_from_iterator, Vocab
+
+from einops import rearrange
+import networkx as nx
+
+from csi_sign_language.csi_typing import PaddingMode
+from ..csi_typing import *
+from .utils import VideoGenerator, padding, hand_recognition
 
 from abc import ABC, abstractmethod
 
@@ -162,7 +163,12 @@ class SegCollateGraph:
         attributes_left_batch, attributes_right_batch = tuple(zip(*b))
         attributes_left_batch, attributes_right_batch = np.stack(attributes_left_batch), np.stack(attributes_right_batch)
         
-        return tensor(attributes_left_batch).transpose(-1, -2), tensor(attributes_right_batch).transpose(-1, -2), tensor(label), tensor(np.stack(adjacency.nonzero())), tensor(mask)
+        return (
+            tensor(attributes_left_batch, dtype=torch.float32).transpose(-1, -2), 
+            tensor(attributes_right_batch, dtype=torch.float32).transpose(-1, -2), 
+            tensor(label, dtype=torch.float32), 
+            tensor(np.stack(adjacency.nonzero(),dtype=np.int64)), 
+            tensor(mask, dtype=torch.bool))
 
     @staticmethod
     def get_attribute_from_graph(g):
