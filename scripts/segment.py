@@ -4,10 +4,11 @@ import pandas as pd
 import cv2
 import sys
 sys.path.append('src')
-from csi_sign_language.dataset.utils import MediapipeDetector
+from csi_sign_language.utils.mediapipe import MediapipeDetector
 import pathlib as pl
+import tqdm
 
-
+if_load = True
 training_class_txt = '/home/jingyan/Documents/csi_sign_language/dataset/phoenix2014-release/phoenix-2014-multisigner/annotations/automatic/train.alignment'
 path_to_features = '/home/jingyan/Documents/csi_sign_language/dataset/phoenix2014-release/phoenix-2014-multisigner'
 
@@ -20,9 +21,20 @@ npy_dir = 'features'
 
 alignment = pd.read_csv(training_class_txt, index_col=None, header=None, sep=" ")
 frames = alignment.iloc[:, 0]
-frame_info = pd.DataFrame(columns=['feature', 'lhand', 'rhand', 'pose'])
+
+if if_load:
+    frame_info = pd.read_csv(os.path.join(save_dir, 'annotations.csv'), index_col=False)
+    annotation_io = open(os.path.join(save_dir, 'annotations.csv'), 'a')
+else:
+    frame_info = pd.DataFrame(columns=['feature', 'lhand', 'rhand', 'pose'])
+
+previous_frame_info = frame_info['feature']
 mp = MediapipeDetector()
-for frame in frames:
+for frame in tqdm.tqdm(frames):
+    if if_load and previous_frame_info.isin([frame]).any():
+        print('exist, jumping')
+        continue
+    
     img = cv2.imread(os.path.join(path_to_features, frame))
     hand_res = mp.hand_recognition(img)
     pose_res = mp.pose_recognition(img)
@@ -54,8 +66,20 @@ for frame in frames:
     np.save(os.path.join(save_dir, npy_dir, rhand_name), rhand)
     np.save(os.path.join(save_dir, npy_dir, pose_name), pose)
 
+    if not if_load:
+        row = pd.Series([frame, lhand_name, rhand_name, pose_name], index=frame_info.columns)
+        frame_info.loc[len(frame_info)] = row
+        frame_info.to_csv(os.path.join(save_dir, 'annotations.csv'), index=False)
+        
+    if if_load:
+        row = f'{frame},{lhand_name},{rhand_name},{pose_name}\n'
+        try:
+            annotation_io.write(row)
+        except KeyError as e:
+            annotation_io.close()
+            exit()
     
-    row = pd.Series([frame, lhand_name, rhand_name, pose_name], index=frame_info.columns)
-    frame_info.loc[len(frame_info)] = row
-    frame_info.to_csv(os.path.join(save_dir, 'annotations.csv'), index=False)
-    continue
+
+if if_load:
+    annotation_io.close()
+    

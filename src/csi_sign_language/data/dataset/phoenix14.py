@@ -9,15 +9,13 @@ from pathlib import Path
 
 import torch
 from torch.utils.data import Dataset
-from torch import tensor
 from torchtext.vocab import vocab, build_vocab_from_iterator, Vocab
 
 from einops import rearrange
-import networkx as nx
 
 from csi_sign_language.csi_typing import PaddingMode
-from ..csi_typing import *
-from .utils import VideoGenerator, padding, hand_recognition
+from ...csi_typing import *
+from ...utils.data import VideoGenerator, padding, assert_lists_same_length
 
 from abc import ABC, abstractmethod
 
@@ -113,79 +111,15 @@ class Phoenix14Dataset(BasePhoenix14Dataset):
         return file_list
         
 
-class SegCollateGraph:
-    
-    def __init__(self, detector, clip_size=32) -> None:
-        self.clip_size = clip_size
-        self.detector = detector
-    
-    def __call__(self, collected_tuple):
-        data, label, mask = zip(*collected_tuple)
-        #[[s, h, w, c]...]
-        data = np.stack(data)
-        label = np.stack(label)
-        mask = np.stack(mask)
-
-        #[b, s, h, w, c]
-        assert data.shape[1] % self.clip_size == 0, f'the number for frames must be must be an integer multiple of {self.clip_size}'
-
-        data = rearrange(data, 'b (s clp) h w c -> (b s) clp h w c', clp=self.clip_size)
-        mask = rearrange(mask, 'b (s clp) -> (b s) clp', clp=self.clip_size)
-        label = rearrange(label, 'b (s clp) -> (b s) clp', clp=self.clip_size)
-        
-        adjacency = None
-        b = []
-        for clip in data:
-            attributes_left = []
-            attributes_right = []
-            for frame in clip:
-                result = hand_recognition(frame, detector=self.detector)
-                g = None
-                if 'Left' in result:
-                    g = result['Left']
-                    x, y = self.get_attribute_from_graph(g)
-                    attributes_left.append(np.array([x, y]))
-                else:
-                    attributes_left.append(np.zeros(shape=(2, 21)))
-                
-                if 'Right' in result:
-                    g = result['Right']
-                    x, y = self.get_attribute_from_graph(g)
-                    attributes_right.append(np.array([x, y]))
-                else:
-                    attributes_right.append(np.zeros(shape=(2, 21)))
-                    
-                if g is not None and adjacency is None:
-                    adjacency = nx.adjacency_matrix(g)
-
-            b.append((np.stack(attributes_left), np.stack(attributes_right)))
-        
-        attributes_left_batch, attributes_right_batch = tuple(zip(*b))
-        attributes_left_batch, attributes_right_batch = np.stack(attributes_left_batch), np.stack(attributes_right_batch)
-        
-        return (
-            tensor(attributes_left_batch, dtype=torch.float32).transpose(-1, -2), 
-            tensor(attributes_right_batch, dtype=torch.float32).transpose(-1, -2), 
-            tensor(label, dtype=torch.float32), 
-            tensor(np.stack(adjacency.nonzero(),dtype=np.int64)), 
-            tensor(mask, dtype=torch.bool))
-
-    @staticmethod
-    def get_attribute_from_graph(g):
-        a = nx.get_node_attributes(g, 'x').values()
-        x = np.array(list(nx.get_node_attributes(g, 'x').values()))
-        y = np.array(list(nx.get_node_attributes(g, 'y').values()))
-        return x, y
-
-class Phoenix14SegDatset(Phoenix14Dataset):
+class Phoenix14SegDataset(Phoenix14Dataset):
     """
     Dataset for frame level segmentation, only multi train and multisigner is avialiable
     the output is (frames, frames_level_annotation) 
     special token added: <PAD>, so all classes index will +1 !!!!!
 
     """
-    def __init__(self, data_root, length_time=None, length_glosses=None, padding_mode: PaddingMode = 'front', gloss_dict=None, img_transform=None):
-        super().__init__(data_root, 'train', True, length_time, length_glosses, padding_mode, gloss_dict, img_transform)
+    def __init__(self, data_root, length_time=None, padding_mode: PaddingMode = 'front', img_transform=None):
+        super().__init__(data_root, 'train', True, length_time, None, padding_mode, None, img_transform)
         self._frame_level_annotations_relative_path: str = 'phoenix-2014-multisigner/annotations/automatic'
         self._path_to_training_classes_txt: str= os.path.join(data_root, self._frame_level_annotations_relative_path, 'trainingClasses.txt')
         self._path_to_alignment: str = os.path.join(data_root, self._frame_level_annotations_relative_path, 'train.alignment')
@@ -228,4 +162,52 @@ class Phoenix14SegDatset(Phoenix14Dataset):
         ret = target_dirs.relative_to(root_dirs)
         ret = Path(*ret.parts[1:])
         return str(ret)
+
+class Phoenix14GraphSegDataset(Phoenix14SegDataset):
+    """
+    Dataset to load the extracted keypoints subset from frame-level annotation.
+    the output is (frames, frames_level_annotation) 
+    special token added: <PAD>, so all classes index will +1 !!!!!
+    """
+    def __init__(self, phoenix14_data_root, subset_data_root, length_time=None, padding_mode: PaddingMode = 'front', img_transform=None):
+        super().__init__(phoenix14_data_root, length_time, padding_mode, img_transform)
+        self.subset_data_root = subset_data_root
+        
+        annotation_path = os.path.join(subset_data_root, 'annotations.csv')
+        self.keypoints_annotation = pd.read_csv(annotation_path)
+        self.keypoints_annotation = self.keypoints_annotation.set_index(self.keypoints_annotation['feature'])
+        self.feature_root = os.path.join(subset_data_root, 'features')
     
+    def __getitem__(self, idx):
+        folder: str = self._annotations['folder'].iloc[idx]
+        frame_files: List[str] = self._get_frame_file_list_from_annotation(folder)
+        frame_files_relative: List[str] = [self._remove_root_dir_from_directory(dir) for dir in frame_files]
+
+        anno_frame_levels = []
+        lhand_array = []
+        rhand_array = []
+        pose_array = []
+        for frame in frame_files_relative:
+            # read label into numpy
+            anno_frame_levels.append(self.alignment.loc[frame].item() + 1)
+
+            # read label into
+            feature_row = self.keypoints_annotation.loc[frame]
+
+            lhand_file = os.path.join(self.feature_root, feature_row['lhand'])
+            rhand_file = os.path.join(self.feature_root, feature_row['rhand'])
+            pose_file = os.path.join(self.feature_root, feature_row['pose'])
+        
+            lhand_array.append(np.load(lhand_file))
+            rhand_array.append(np.load(rhand_file))
+            pose_array.append(np.load(pose_file))
+        
+        assert_lists_same_length([anno_frame_levels, lhand_array, rhand_array, pose_array])
+        anno_frame_levels, lhand_array, rhand_array, pose_array = (np.stack(item) for item in (anno_frame_levels, lhand_array, rhand_array, pose_array))
+
+        anno_frame_levels, mask = padding(anno_frame_levels, 0, self._length_time, self._padding_mode)
+        lhand_array, _ = padding(lhand_array, 0, self._length_time, self._padding_mode)
+        rhand_array , _ = padding(rhand_array, 0, self._length_time, self._padding_mode)
+        pose_array, _ = padding(pose_array, 0, self._length_time, self._padding_mode)
+        
+        return dict(annotation=anno_frame_levels, lhand=lhand_array, rhand=rhand_array, pose=pose_array, time_mask=mask)

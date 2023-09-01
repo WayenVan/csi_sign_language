@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 
-from .unet import Unet1d
-from .graph import GCNBert
+from ..modules.unet import Unet1d
+from ..modules.graph import GCNBert
 
 class GNNUnet(nn.Module):
 
@@ -27,3 +27,5 @@ class GNNUnet(nn.Module):
 
         x = rearrange(x, 'b s n d -> b (n d) s')
         return self.decoder(x)
+    
+    
