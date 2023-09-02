@@ -1,3 +1,9 @@
-a = dict(ff='a')
+import sys
+sys.path.append('src')
 
-a.ff
+from csi_sign_language.utils.logger import build_logger
+
+
+logger = build_logger('test', 'dataset/test.log')
+logger.info('hohohohhohahahahah')
+logger.warn('hahsdhfh')
