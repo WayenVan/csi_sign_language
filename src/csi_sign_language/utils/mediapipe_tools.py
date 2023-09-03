@@ -1,7 +1,6 @@
 import mediapipe as mp
 import networkx as nx
 from mediapipe.tasks.python import vision
-from mediapipe.tasks import python
 import cv2
 
 import numpy as np
