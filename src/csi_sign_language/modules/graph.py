@@ -31,7 +31,7 @@ class GCNBert(nn.Module):
     def forward(self, attributes, edge, mask=None):
         """
         :param attributes: [batch, timporal_sequence, num_nodes, xy]
-        :param edge: [2, 2*num_nodes]
+        :param edge: [2, num_edges]
         :param mask: [batch, timporal_sequence]
         """
         batch = attributes.size()[0]

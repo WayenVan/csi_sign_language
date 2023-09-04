@@ -17,6 +17,7 @@ class GNNUnet(nn.Module):
     def forward(self, x_, edges):
         """
         :param x: [b, s, n, xy]
+        :param edges: [2, num_edges]
         """
 
         x = self.gb(x_, edges)
