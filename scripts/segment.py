@@ -3,14 +3,16 @@ import os
 import pandas as pd
 import cv2
 import sys
+from random import sample
 sys.path.append('src')
 from csi_sign_language.utils.mediapipe_tools import MediapipeDetector
 import pathlib as pl
 import tqdm
-
+from omegaconf import OmegaConf
 if_load = True
 training_class_txt = '/home/jingyan/Documents/csi_sign_language/dataset/phoenix2014-release/phoenix-2014-multisigner/annotations/automatic/train.alignment'
 path_to_features = '/home/jingyan/Documents/csi_sign_language/dataset/phoenix2014-release/phoenix-2014-multisigner'
+path_to_phoenix2014 = ''
 
 hand_shape = (21, 2)
 pose_shape = (33, 2)
@@ -92,7 +94,24 @@ def generate_config():
     np.save(os.path.join(save_dir, 'pose_connection.npy'), pose_connection.transpose())
     
     
+def generate_meta_data():
+    name = 'jingyan'
+    email = 'wayenvan@outlook.com'
     
+    data_length = 1000
+    training_length = int(data_length * 0.7)
+    validation_length = int(data_length * 0.2)
+
+    original_list = [i for i in range(data_length)]
+    training_list = sample(original_list, training_length)
+
+    subset = set(original_list) - set(training_list)
+    validation_list = sample(list(subset), validation_length)
+
+    test_list = list(set(original_list) - set(training_list) - set(validation_list))
+
+    meta = dict(name=name, email=email, train_indexex=training_list, validation_indexes=validation_list, test_indexes=test_list)
+    OmegaConf.save(meta, os.path.join(save_dir, 'meta.yaml'))
     
 if __name__ == '__main__':
-    generate_config()
+    generate_meta_data()
