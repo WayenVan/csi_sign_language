@@ -177,6 +177,11 @@ class Phoenix14GraphSegDataset(Phoenix14SegDataset):
         self.keypoints_annotation = pd.read_csv(annotation_path)
         self.keypoints_annotation = self.keypoints_annotation.set_index(self.keypoints_annotation['feature'])
         self.feature_root = os.path.join(subset_data_root, 'features')
+
+        self.HAND_CONNECTION: np.ndarray = np.load(os.path.join(self.subset_data_root, 'hand_connection.npy'))
+        self.POSE_CONNECTION: np.ndarray = np.load(os.path.join(self.subset_data_root, 'pose_connection.npy'))
+
+
     
     def __getitem__(self, idx):
         folder: str = self._annotations['folder'].iloc[idx]
