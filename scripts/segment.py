@@ -14,9 +14,11 @@ path_to_features = '/home/jingyan/Documents/csi_sign_language/dataset/phoenix201
 
 hand_shape = (21, 2)
 pose_shape = (33, 2)
+hand_asset = '/home/wayenvan/Desktop/csi_sign_language/resources/hand_landmarker.task'
+pose_asset = '/home/wayenvan/Desktop/csi_sign_language/resources/pose_landmarker_lite.task'
 
 
-save_dir = '/home/jingyan/Documents/csi_sign_language/dataset/graph_subset'
+save_dir = '/home/wayenvan/Desktop/csi_sign_language/dataset/graph_subset'
 npy_dir = 'features'
 
 def segment():
@@ -33,7 +35,7 @@ def segment():
 
 
     previous_frame_info = frame_info['feature']
-    mp = MediapipeDetector()
+    mp = MediapipeDetector(hand_asset, pose_asset)
     for frame in tqdm.tqdm(frames):
         if if_load and previous_frame_info.isin([frame]).any():
             print('exist, jumping')
@@ -82,8 +84,12 @@ def segment():
     annotation_io.close()
     
 def generate_config():
-    mp = MediapipeDetector()
-    mp.HAND_CONNECTIONS
+    mp = MediapipeDetector(hand_asset=hand_asset, pose_asset=pose_asset)
+    hand_connection = np.array([(item.start, item.end) for item in mp.HAND_CONNECTIONS])
+    pose_connection = np.array([(item.start, item.end) for item in mp.POSE_CONNECTIONS])
+
+    np.save(os.path.join(save_dir, 'hand_connection.npy'), hand_connection.transpose())
+    np.save(os.path.join(save_dir, 'pose_connection.npy'), pose_connection.transpose())
     
     
     
