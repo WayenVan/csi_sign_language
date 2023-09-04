@@ -32,8 +32,8 @@ def build_dataloader(cfg: DictConfig):
     b_val = cfg.data.validate_loader.batch_size
     b_test = cfg.data.test_loader.batch_size
     return dict(
-        train_loader = DataLoader(dataset['train_set'], batch_size=b_train),
-        val_loader = DataLoader(dataset['val_set'], batch_size=b_val),
-        test_loader = DataLoader(dataset['test_set'], batch_size=b_test)
+        train_loader = DataLoader(dataset['train_set'], batch_size=b_train, num_workers=cfg.data.num_workers),
+        val_loader = DataLoader(dataset['val_set'], batch_size=b_val, num_workers=cfg.data.num_workers),
+        test_loader = DataLoader(dataset['test_set'], batch_size=b_test, num_workers=cfg.data.num_workers)
     )
 

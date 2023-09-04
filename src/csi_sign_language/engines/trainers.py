@@ -7,6 +7,7 @@ from tqdm import tqdm
 from ..models.models import GNNUnet
 from torchmetrics.classification import Accuracy
 from einops import rearrange
+import numpy as np
 
 class Trainner():
     
@@ -20,7 +21,8 @@ class Trainner():
         save_directory: str,
         device,
         hand_connection,
-        pose_connection
+        pose_connection,
+        clip_size
         ) -> None:
 
         self.model = model
@@ -33,6 +35,7 @@ class Trainner():
         self.hand_connection = hand_connection
         self.pose_connection = pose_connection
         self.save_directory = save_directory
+        self.clip_size = clip_size
 
     def do_train(self):
         self.model.to(self.device)
@@ -46,7 +49,8 @@ class Trainner():
         for idx, data in enumerate(tqdm(self.train_loader)):
             annotation = data['annotation']
             lhand = data['lhand']
-            lhand: torch.tensor = rearrange(lhand, 'b (tmp clip) n xy -> (b tmp) clip n xy', clip=32)
+            lhand: torch.tensor = rearrange(lhand, 'b (tmp clip) n xy -> (b tmp) clip n xy', clip=self.clip_size)
+
             lhand = lhand.type(torch.float32).to(self.device)
             edges = torch.tensor(self.hand_connection, dtype=torch.int64).to(self.device)
             
@@ -60,9 +64,17 @@ class Trainner():
 
             accuracy.update(output, annotation)
             batch_accuracy = accuracy(output, annotation)
-            self.logger.info(f'iteration index:{idx}, batch loss: {loss.item()}, batch accuracy: {batch_accuracy}')
+            #calculate mask percentage
+            mask = data['time_mask'].numpy()
+            mask = rearrange(mask, 'b s -> (b s)')
+            mask: np.ndarray = np.invert(mask)
+            total_mask = np.sum(mask.astype(np.int8))
+            percentage = total_mask/mask.shape[0]
+            
+
+            self.logger.info(f'iteration index: {idx}, batch loss: {loss.item()}, batch accuracy: {batch_accuracy}, padding percentage: {percentage}')
             batch_accus.append(batch_accuracy)
-            batch_losses.append(batch_losses)
+            batch_losses.append(loss.item())
         
         return dict(
             accuracy=accuracy.compute(),
