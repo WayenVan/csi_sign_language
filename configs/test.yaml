@@ -1,6 +1,0 @@
-mediapipe:
-  hand_asset: /home/jingyan/Documents/csi_sign_language/resources/hand_landmarker.task
-  pose_asset: /home/jingyan/Documents/csi_sign_language/resources/pose_landmarker_lite.task
-
-
-

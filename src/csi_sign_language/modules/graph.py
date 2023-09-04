@@ -41,7 +41,7 @@ class GCNBert(nn.Module):
         #using GCN
         x = rearrange(attributes, 'b t n f -> (b t) n f')
         x = self.gcn(x, edge_index=edge)
-        x = rearrange(x, '(b t) n f -> b t (n f)', b=batch)
+        x = rearrange(x, '(b t) n f -> t b (n f)', b=batch)
         
         #padding zeros in the last dimension, No
         # padding = torch.zeros(size=(batch, timporal, self.BERT_EMBEDDING_DIM-x.size()[-1]))
@@ -51,7 +51,7 @@ class GCNBert(nn.Module):
         x = self.g2b_projection(x)
         x = self.encoder(x).last_hidden_state
         x = self.linear(x)
-        x = rearrange(x, 'b t (n out) -> b t n out', n=self.num_node)
+        x = rearrange(x, 't b (n out) -> b t n out', n=self.num_node)
         return x
     
     @staticmethod

@@ -1,35 +1,25 @@
 import sys
 sys.path.append('src')
 import torch
-
+from einops import rearrange
 from torch.utils.data import DataLoader
-import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
-import os
-from pathlib import Path
-from csi_sign_language.dataset.phoenix14 import Phoenix14SegDatset, SegCollateGraph 
-from csi_sign_language.model.models import GNNUnet
-import cv2
-import networkx as nx
+from csi_sign_language.models.models import GNNUnet
+from csi_sign_language.data.build import build_dataloader
+from omegaconf import OmegaConf
+from tqdm import tqdm
+cfg = OmegaConf.load('/home/jingyan/Documents/csi_sign_language/configs/config.yaml')
+loader = build_dataloader(cfg)['train_loader']
 
-base_options = python.BaseOptions(model_asset_path='resources/hand_landmarker.task')
-options = vision.HandLandmarkerOptions(
-    base_options=base_options,
-    num_hands=2
-    )
-detector = vision.HandLandmarker.create_from_options(options)
 
-phoenix_dir = os.path.join(Path(__file__).resolve().parent, '../dataset/phoenix2014-release')
-# STEP 3: Load the input image.
-dataset = Phoenix14SegDatset(phoenix_dir, length_time=320, length_glosses=40, padding_mode='back')
-print(len(dataset))
-loader = DataLoader(dataset, collate_fn=SegCollateGraph(detector=detector, clip_size=32), batch_size=1)
+model = GNNUnet(128, 2, 1, loader.dataset.dataset.NUM_CLASS, 21).to('cuda')
+for data in tqdm(loader):
+    lhand = data['lhand']
+    lhand: torch.tensor = rearrange(lhand, 'b (tmp clip) n xy -> (b tmp) clip n xy', clip=32)
+    lhand = lhand.type(torch.float32).to('cuda')
+    edges = torch.tensor(loader.dataset.dataset.HAND_CONNECTION, dtype=torch.int64).to('cuda')
+    out = model(lhand, edges)
 
-model = GNNUnet(128, 2, 1, 10, 21)
-for attri_l, attri_r, label, edges, mask in loader:
-    print(model(attri_l, edges).shape)
-    print(label.shape)
+    
 
     
 

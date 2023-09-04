@@ -46,7 +46,6 @@ class Up(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
 
-        # if bilinear, use the normal convolutions to reduce the number of channels
         self.up = nn.ConvTranspose1d(in_channels, in_channels // 2, kernel_size=2, stride=2)
         self.conv = Residual1d(in_channels, out_channels)
 

@@ -27,6 +27,8 @@ class GNNUnet(nn.Module):
         
 
         x = rearrange(x, 'b s n d -> b (n d) s')
-        return self.decoder(x)
+        x =self.decoder(x)
+        x = rearrange(x, 'b c s -> b s c')
+        return x
     
     

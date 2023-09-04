@@ -1,0 +1,29 @@
+save_dir: /home/jingyan/Documents/csi_sign_language/results
+device: cuda
+
+model:
+  d_model: 1024
+  num_node: 21
+  in_channel: 2
+  num_encoder: 4
+
+train:
+  lr: 0.001
+  
+data:
+  num_class: 3695
+  phoenix14_root: /home/jingyan/Documents/csi_sign_language/dataset/phoenix2014-release
+  graph_subset_root: /home/jingyan/Documents/csi_sign_language/dataset/graph_subset
+  clip_size: 32  #the size to cut video into clips time_length%clip_size == 0
+  time_length: 320 #the time length of dimension 
+
+  train_loader:
+    batch_size: 4
+
+  validate_loader:
+    batch_size: 16
+
+  test_loader:
+    batch_size: 16
+
+

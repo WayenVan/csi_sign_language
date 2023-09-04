@@ -169,8 +169,8 @@ class Phoenix14GraphSegDataset(Phoenix14SegDataset):
     the output is (frames, frames_level_annotation) 
     special token added: <PAD>, so all classes index will +1 !!!!!
     """
-    def __init__(self, phoenix14_data_root, subset_data_root, length_time=None, padding_mode: PaddingMode = 'front', img_transform=None):
-        super().__init__(phoenix14_data_root, length_time, padding_mode, img_transform)
+    def __init__(self, phoenix14_data_root, subset_data_root, length_time=None, padding_mode: PaddingMode = 'front'):
+        super().__init__(phoenix14_data_root, length_time, padding_mode, None)
         self.subset_data_root = subset_data_root
         
         annotation_path = os.path.join(subset_data_root, 'annotations.csv')
@@ -180,6 +180,7 @@ class Phoenix14GraphSegDataset(Phoenix14SegDataset):
 
         self.HAND_CONNECTION: np.ndarray = np.load(os.path.join(self.subset_data_root, 'hand_connection.npy'))
         self.POSE_CONNECTION: np.ndarray = np.load(os.path.join(self.subset_data_root, 'pose_connection.npy'))
+        self.NUM_CLASS = len(self.gloss_vocab)
 
 
     

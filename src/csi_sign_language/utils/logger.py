@@ -1,5 +1,8 @@
 import logging
-
+from time import strftime, localtime
+def strtime():
+    return strftime('%Y%m%d-%H%M%S', localtime())
+    
 def build_logger(name, save_directory):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)

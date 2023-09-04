@@ -1,11 +1,11 @@
 from omegaconf import DictConfig, OmegaConf
 import tqdm
 from torch.optim import Optimizer
-
+from torch.utils.data import DataLoader, Dataset
 
 class Trainer():
     
-    def __init__(self, dataloader, model, loss_fn, optimizer: Optimizer) -> None:
+    def __init__(self, dataloader: DataLoader, model, loss_fn, optimizer: Optimizer) -> None:
         self.dataloader = dataloader
         self.opt = optimizer
         self.model = model

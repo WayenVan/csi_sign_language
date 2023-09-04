@@ -6,21 +6,22 @@ import sys
 from random import sample
 sys.path.append('src')
 from csi_sign_language.utils.mediapipe_tools import MediapipeDetector
+from csi_sign_language.data.dataset.phoenix14 import Phoenix14GraphSegDataset
 import pathlib as pl
 import tqdm
 from omegaconf import OmegaConf
 if_load = True
-training_class_txt = '/home/jingyan/Documents/csi_sign_language/dataset/phoenix2014-release/phoenix-2014-multisigner/annotations/automatic/train.alignment'
-path_to_features = '/home/jingyan/Documents/csi_sign_language/dataset/phoenix2014-release/phoenix-2014-multisigner'
+training_class_txt = 'dataset/phoenix2014-release/phoenix-2014-multisigner/annotations/automatic/train.alignment'
+path_to_features = 'dataset/phoenix2014-release/phoenix-2014-multisigner'
 path_to_phoenix2014 = ''
 
 hand_shape = (21, 2)
 pose_shape = (33, 2)
-hand_asset = '/home/wayenvan/Desktop/csi_sign_language/resources/hand_landmarker.task'
-pose_asset = '/home/wayenvan/Desktop/csi_sign_language/resources/pose_landmarker_lite.task'
+hand_asset = 'resources/hand_landmarker.task'
+pose_asset = 'resources/pose_landmarker_lite.task'
 
 
-save_dir = '/home/wayenvan/Desktop/csi_sign_language/dataset/graph_subset'
+save_dir = 'dataset/graph_subset'
 npy_dir = 'features'
 
 def segment():
@@ -98,7 +99,9 @@ def generate_meta_data():
     name = 'jingyan'
     email = 'wayenvan@outlook.com'
     
-    data_length = 1000
+    dataset = Phoenix14GraphSegDataset('dataset/phoenix2014-release', save_dir)
+    
+    data_length = len(dataset)
     training_length = int(data_length * 0.7)
     validation_length = int(data_length * 0.2)
 
@@ -110,8 +113,9 @@ def generate_meta_data():
 
     test_list = list(set(original_list) - set(training_list) - set(validation_list))
 
-    meta = dict(name=name, email=email, train_indexex=training_list, validation_indexes=validation_list, test_indexes=test_list)
+    meta = dict(name=name, email=email, train_indexes=training_list, val_indexes=validation_list, test_indexes=test_list)
     OmegaConf.save(meta, os.path.join(save_dir, 'meta.yaml'))
     
 if __name__ == '__main__':
+    generate_config()
     generate_meta_data()
