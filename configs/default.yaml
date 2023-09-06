@@ -8,7 +8,7 @@ model:
   num_encoder: 2
 
 train:
-  lr: 1e-4
+  lr: 1e-5
   epoch: 20
   
 data:
