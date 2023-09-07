@@ -37,6 +37,11 @@ class Trainner():
         self.save_directory = save_directory
         self.clip_size = clip_size
 
+    def _rearrange_data(self, data):
+        data: torch.tensor = rearrange(data, 'b (tmp clip) n xy -> (b tmp) clip n xy', clip=self.clip_size)
+        data = data.type(torch.float32).to(self.device)
+        return data 
+
     def do_train(self):
         self.model.to(self.device)
         self.model.train()
@@ -49,12 +54,14 @@ class Trainner():
         for idx, data in enumerate(tqdm(self.train_loader)):
             annotation = data['annotation']
             lhand = data['lhand']
-            lhand: torch.tensor = rearrange(lhand, 'b (tmp clip) n xy -> (b tmp) clip n xy', clip=self.clip_size)
-
-            lhand = lhand.type(torch.float32).to(self.device)
-            edges = torch.tensor(self.hand_connection, dtype=torch.int64).to(self.device)
+            rhand = data['rhand']
+            pose = data['pose']
             
-            output = self.model(lhand, edges)
+            lhand, rhand, pose = tuple(map(self._rearrange_data, [lhand, rhand, pose]))
+            hand_edges = torch.tensor(self.hand_connection, dtype=torch.int64).to(self.device)
+            pose_edges = torch.tensor(self.pose_connection, dtype=torch.int64).to(self.device)
+            
+            output = self.model(lhand, rhand, pose, hand_edges, pose_edges)
             output = rearrange(output, 'b s c -> (b s) c').to(self.device)
             annotation = rearrange(annotation, 'b s -> (b s)').to(self.device)
             loss = self.loss_fn(output, annotation)

@@ -21,6 +21,6 @@ class BertLayerWrapper(nn.Module):
         :param x: [s b d]
         """
         x = self.in_linear(x)
-        x = self.bertlayer(x)
+        x = self.bertlayer(x)[0]
         x = self.out_linear(x)
         return x

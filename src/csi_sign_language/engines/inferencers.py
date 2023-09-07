@@ -29,6 +29,11 @@ class Inferencer():
         self.NUM_CLASS = num_class
         self.clip_size = clip_size
     
+    def _rearrange_data(self, data):
+        data: torch.tensor = rearrange(data, 'b (tmp clip) n xy -> (b tmp) clip n xy', clip=self.clip_size)
+        data = data.type(torch.float32).to(self.device)
+        return data 
+        
     def do_inference(self):
         self.model.to(self.device)
         self.model.eval()
@@ -39,13 +44,16 @@ class Inferencer():
         for idx, data in enumerate(tqdm(self.loader)):
             annotation = data['annotation']
             lhand = data['lhand']
+            rhand = data['rhand']
+            pose = data['pose']
             b_size = lhand.size()[0]
-            lhand: torch.tensor = rearrange(lhand, 'b (tmp clip) n xy -> (b tmp) clip n xy', clip=self.clip_size)
-            lhand = lhand.type(torch.float32).to(self.device)
-            edges = torch.tensor(self.hand_connection, dtype=torch.int64).to(self.device)
             
+            lhand, rhand, pose = tuple(map(self._rearrange_data, [lhand, rhand, pose]))
+            hand_edges = torch.tensor(self.hand_connection, dtype=torch.int64).to(self.device)
+            pose_edges = torch.tensor(self.pose_connection, dtype=torch.int64).to(self.device)
+
             with torch.no_grad():
-                output = self.model(lhand, edges)
+                output = self.model(lhand, rhand, pose, hand_edges, pose_edges)
             output = rearrange(output, 'b s c -> (b s) c').to(self.device)
             annotation = rearrange(annotation, 'b s -> (b s)').to(self.device)
 
