@@ -30,7 +30,7 @@ class Inferencer():
         self.clip_size = clip_size
     
     def _rearrange_data(self, data):
-        data: torch.tensor = rearrange(data, 'b (tmp clip) n xy -> (b tmp) clip n xy', clip=self.clip_size)
+        # data: torch.tensor = rearrange(data, 'b (tmp clip) n xy -> (b tmp) clip n xy', clip=self.clip_size)
         data = data.type(torch.float32).to(self.device)
         return data 
         

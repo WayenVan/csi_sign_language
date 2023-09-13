@@ -169,7 +169,7 @@ class Phoenix14GraphSegDataset(Phoenix14SegDataset):
     the output is (frames, frames_level_annotation) 
     special token added: <PAD>, so all classes index will +1 !!!!!
     """
-    def __init__(self, phoenix14_data_root, subset_data_root, length_time=None, padding_mode: PaddingMode = 'front'):
+    def __init__(self, phoenix14_data_root, subset_data_root, length_time=None, padding_mode: PaddingMode = 'front', transformation=None):
         super().__init__(phoenix14_data_root, length_time, padding_mode, None)
         self.subset_data_root = subset_data_root
         
@@ -181,7 +181,7 @@ class Phoenix14GraphSegDataset(Phoenix14SegDataset):
         self.HAND_CONNECTION: np.ndarray = np.load(os.path.join(self.subset_data_root, 'hand_connection.npy'))
         self.POSE_CONNECTION: np.ndarray = np.load(os.path.join(self.subset_data_root, 'pose_connection.npy'))
         self.NUM_CLASS = len(self.gloss_vocab)
-
+        self.transformation = transformation
 
     
     def __getitem__(self, idx):
@@ -216,4 +216,9 @@ class Phoenix14GraphSegDataset(Phoenix14SegDataset):
         rhand_array , _ = padding(rhand_array, 0, self._length_time, self._padding_mode)
         pose_array, _ = padding(pose_array, 0, self._length_time, self._padding_mode)
         
-        return dict(annotation=anno_frame_levels, lhand=lhand_array, rhand=rhand_array, pose=pose_array, time_mask=mask)
+        ret = dict(annotation=anno_frame_levels, lhand=lhand_array, rhand=rhand_array, pose=pose_array, time_mask=mask)
+
+        if self.transformation is not None:
+            return self.transformation(ret)
+        else:
+            return ret

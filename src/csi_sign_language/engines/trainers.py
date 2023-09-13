@@ -4,16 +4,17 @@ from torch.nn import Module
 from torch.utils.data import DataLoader
 from logging import Logger
 from tqdm import tqdm
-from ..models.models import GNNUnet
+from ..models.models import *
 from torchmetrics.classification import Accuracy
 from einops import rearrange
 import numpy as np
+from ..utils.inspect import *
 
 class Trainner():
     
     def __init__(
         self, 
-        model: GNNUnet, 
+        model, 
         optimizer: Optimizer, 
         train_loader: DataLoader, 
         _logger: Logger,
@@ -38,7 +39,7 @@ class Trainner():
         self.clip_size = clip_size
 
     def _rearrange_data(self, data):
-        data: torch.tensor = rearrange(data, 'b (tmp clip) n xy -> (b tmp) clip n xy', clip=self.clip_size)
+        # data: torch.tensor = rearrange(data, 'b (tmp clip) n xy -> (b tmp) clip n xy', clip=self.clip_size)
         data = data.type(torch.float32).to(self.device)
         return data 
 
@@ -67,6 +68,7 @@ class Trainner():
             loss = self.loss_fn(output, annotation)
             self.opt.zero_grad()
             loss.backward()
+            # print_gradient(self.model, self.logger)
             self.opt.step()
 
             accuracy.update(output, annotation)

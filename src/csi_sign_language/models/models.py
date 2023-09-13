@@ -5,46 +5,21 @@ import transformers as tf
 
 from ..modules.unet import *
 from ..modules.graph import *
-
-class GNNUnet(nn.Module):
-
-    def __init__(self, d_model, in_channel, n_encoder, n_classes, num_node) -> None:
-        super().__init__()
-        self.gb = GCNBert.create_model(d_model, in_channel, d_model, num_node)
-        self.encoders = nn.ModuleList([GCNBert.create_model(d_model, d_model, d_model, num_node) for i in range(n_encoder)])
-        self.decoder = Unet1d(d_model * num_node, n_classes)
-        
-        
-    def forward(self, x_, edges):
-        """
-        :param x: [b, s, n, xy]
-        :param edges: [2, num_edges]
-        """
-
-        x = self.gb(x_, edges)
-        for module in self.encoders:
-            x = module(x, edges)
-        # [b, s, n, d_model]
-        
-
-        x = rearrange(x, 'b s n d -> b (n d) s')
-        x =self.decoder(x)
-        x = rearrange(x, 'b c s -> b s c')
-        return x
-    
     
 class GNNUnetV2(nn.Module):
 
     def __init__(self, d_model, in_channel, n_classes, num_node_hand, num_node_pose, bert: tf.BertModel) -> None:
         super().__init__() 
+        
+        self.d_model = d_model
+        
         bert_layers = bert.encoder.layer
         self.encoder_lhand = self.create_encoder(d_model, in_channel, num_node_hand, bert_layers)
         self.encoder_pose = self.create_encoder(d_model, in_channel, num_node_pose, bert_layers)
         self.encoder_rhand = self.create_encoder(d_model, in_channel, num_node_hand, bert_layers)
         
-        out_dim = d_model*num_node_hand*2 + num_node_pose*d_model
-        self.pooling = nn.MaxPool1d(2, 2)
-        self.decoder = Unet1d(out_dim//2, n_classes)
+        self.pooling = nn.AdaptiveAvgPool2d((1, d_model))
+        self.decoder = Unet1d(d_model*3, n_classes)
     
     @staticmethod
     def create_encoder(d_model, in_channel, num_node, bert_layers: nn.ModuleList):
@@ -63,6 +38,14 @@ class GNNUnetV2(nn.Module):
             x = module(x, edges)
         return x
     
+    def handle_encoder_output(self, x):
+        x = self.pooling(x)
+        x = rearrange(x, 'b s n d -> b s (n d)')
+        assert x.size()[-1] == self.d_model
+        return x
+    
+    
+    
     def forward(self, lhand, rhand, pose, hand_edges, pose_edges):
         """
         :param x: [b, s, n, xy]
@@ -74,10 +57,10 @@ class GNNUnetV2(nn.Module):
         # [b, s, n, d_model]
         
         assumble = [lhand, rhand, pose]
-        assumble = list(map(lambda a : rearrange(a, 'b s n d -> b s (n d)'), assumble))
+        assumble = list(map(self.handle_encoder_output, assumble))
         assumble = torch.cat(assumble, dim=-1)
-        x = self.pooling(assumble)
-        x = rearrange(x, 'b s c -> b c s')
+        
+        x = rearrange(assumble, 'b s c -> b c s')
         x =self.decoder(x)
         x = rearrange(x, 'b c s -> b s c')
         return x

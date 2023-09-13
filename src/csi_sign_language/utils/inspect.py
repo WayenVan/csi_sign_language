@@ -1,12 +1,19 @@
 import torch
 import torch.nn as nn
-
-def print_nested_children(module, prefix=''):
+import logging
+def print_nested_children(module, logger: logging.Logger, prefix=''):
     for name, child in module.named_children():
         print(prefix + name + ':', child)
         if isinstance(child, nn.Module):
             print_nested_children(child, prefix=prefix + '  ')
 
-def print_children(module, prefix=''):
+def print_children(module, logger: logging.Logger, prefix=''):
     for name, child in module.named_children():
-        print(prefix + name + ':', child)
+        logger.info(prefix + name + ':' + str(child))
+
+
+def print_gradient(model, logger: logging.Logger):
+    for name, param in model.named_parameters():
+        if param.grad is not None:
+            logger.info(f'Layer: {name}, Gradient Shape: {param.grad.shape}')
+            logger.info(param.grad)

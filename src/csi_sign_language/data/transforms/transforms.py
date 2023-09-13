@@ -1,6 +1,7 @@
 from typing import Any
-from ...utils.mediapipe import MediapipeDetector
+from ...utils.mediapipe_tools import MediapipeDetector
 import numpy as np
+from ...utils.data import *
 
 class Image2Keypoints():
     
@@ -49,3 +50,48 @@ class Image2Keypoints():
             pose_flag = pose_f,
         ) 
 
+class TimporalNorm():
+    
+    def __init__(self) -> None:
+        pass
+    
+    def __call__(self, data, *args: Any, **kwds: Any) -> Any:
+        """
+        :param data: dictionary containing lhand, rhand, pose [time, nodes, xy]
+        :return
+        """
+        for key in ('lhand', 'pose', 'rhand'):
+            d = data[key]
+            d = norm(d, 0)
+            data[key] = d
+        return data
+    
+    
+class TimporalStand():
+    
+    def __init__(self) -> None:
+        pass
+    
+    def __call__(self, data, *args: Any, **kwds: Any) -> Any:
+        """
+        :param data: dictionary containing lhand, rhand, pose [time, nodes, xy]
+        :return
+        """
+        for key in ('lhand', 'pose', 'rhand'):
+            d = data[key]
+            d = stand(d, 0)
+            data[key] = d
+        return data 
+    
+
+class TimporalInterp():
+    
+    def __init__(self) -> None:
+        pass
+    
+    def __call__(self, data, *args: Any, **kwds: Any) -> Any:
+        for key in ('lhand', 'pose', 'rhand'):
+            d = data[key]
+            d = interp(d, mask=data['time_mask'])
+            data[key] = d
+        return data

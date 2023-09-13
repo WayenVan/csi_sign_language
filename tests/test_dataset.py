@@ -7,7 +7,7 @@ from tqdm import tqdm
 def test_graphsetgment_dataset():
     """testing if all the dataloader is correct given a default config file
     """
-    cfg = OmegaConf.load('configs/config.yaml') 
+    cfg = OmegaConf.load('configs/defaultv2.yaml') 
     loader = build_dataloader(cfg)
     for data in tqdm(loader['train_loader']):
         pass
