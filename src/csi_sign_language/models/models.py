@@ -20,6 +20,7 @@ class GNNUnetV2(nn.Module):
         
         self.pooling = nn.AdaptiveAvgPool2d((1, d_model))
         self.decoder = Unet1d(d_model*3, n_classes)
+        self.logsoft = nn.LogSoftmax(dim=-1)
     
     @staticmethod
     def create_encoder(d_model, in_channel, num_node, bert_layers: nn.ModuleList):
@@ -63,4 +64,4 @@ class GNNUnetV2(nn.Module):
         x = rearrange(assumble, 'b s c -> b c s')
         x =self.decoder(x)
         x = rearrange(x, 'b c s -> b s c')
-        return x
+        return self.logsoft(x)

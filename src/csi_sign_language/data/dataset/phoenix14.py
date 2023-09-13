@@ -124,9 +124,10 @@ class Phoenix14SegDataset(Phoenix14Dataset):
         self._path_to_training_classes_txt: str= os.path.join(data_root, self._frame_level_annotations_relative_path, 'trainingClasses.txt')
         self._path_to_alignment: str = os.path.join(data_root, self._frame_level_annotations_relative_path, 'train.alignment')
         
+        self.no_sign_token = 'si'
+        self.pad_token = '<PAD>'
         self.frame_level_vocab = self._create_vocab()
         self.alignment = pd.read_csv(self._path_to_alignment, index_col=0, header=None, sep=" ")
-        self.no_sign_token = 'si'
 
     
     def __getitem__(self, idx):
@@ -154,7 +155,7 @@ class Phoenix14SegDataset(Phoenix14Dataset):
         class_dict: List[Tuple[str, int]] = [(row['signstate'], 1) \
                                             for index, row in _training_classes.iterrows()]
         class_dict: OrderedDict = OrderedDict(class_dict)
-        return vocab(class_dict, specials=['<PAD>'])
+        return vocab(class_dict, specials=[self.pad_token])
     
     def _remove_root_dir_from_directory(self, dir: str):
         root_dirs = Path(self._data_root)
@@ -169,7 +170,7 @@ class Phoenix14GraphSegDataset(Phoenix14SegDataset):
     the output is (frames, frames_level_annotation) 
     special token added: <PAD>, so all classes index will +1 !!!!!
     """
-    def __init__(self, phoenix14_data_root, subset_data_root, length_time=None, padding_mode: PaddingMode = 'front', transformation=None):
+    def __init__(self, phoenix14_data_root, subset_data_root, length_time=None, padding_mode: PaddingMode = 'front', transform=None):
         super().__init__(phoenix14_data_root, length_time, padding_mode, None)
         self.subset_data_root = subset_data_root
         
@@ -181,7 +182,7 @@ class Phoenix14GraphSegDataset(Phoenix14SegDataset):
         self.HAND_CONNECTION: np.ndarray = np.load(os.path.join(self.subset_data_root, 'hand_connection.npy'))
         self.POSE_CONNECTION: np.ndarray = np.load(os.path.join(self.subset_data_root, 'pose_connection.npy'))
         self.NUM_CLASS = len(self.gloss_vocab)
-        self.transformation = transformation
+        self.transform = transform
 
     
     def __getitem__(self, idx):
@@ -218,7 +219,49 @@ class Phoenix14GraphSegDataset(Phoenix14SegDataset):
         
         ret = dict(annotation=anno_frame_levels, lhand=lhand_array, rhand=rhand_array, pose=pose_array, time_mask=mask)
 
-        if self.transformation is not None:
-            return self.transformation(ret)
+        if self.transform is not None:
+            return self.transform(ret)
         else:
             return ret
+
+
+class Pheoix14GraphSegDatasetReduced(Phoenix14GraphSegDataset):
+    
+    def __init__(self, phoenix14_data_root, subset_data_root, length_time=None, padding_mode: PaddingMode = 'front', transform=None):
+        super().__init__(phoenix14_data_root, subset_data_root, length_time, padding_mode, transform=None)
+        self._create_reduced_vocab()
+        self.transform = transform
+    
+    def __getitem__(self, idx):
+        data = super().__getitem__(idx)
+        annotation_old = data['annotation']
+        annotation_new = [self.map_origin_to_reduced(self.frame_level_vocab.lookup_token(idx)) for idx in annotation_old]
+        annotation_new = np.array(self.reduced_vocab(annotation_new))
+        data['annotation'] = annotation_new
+        if self.transform is not None:
+            return self.transform(data)
+        else:
+            return data
+        
+    def _create_reduced_vocab(self):
+        origin_token_list = self.frame_level_vocab.get_itos()
+        v = vocab(OrderedDict(), special_first=True, specials=[self.pad_token, self.no_sign_token])
+        for token in origin_token_list:
+            if token == self.no_sign_token or token == self.pad_token:
+                continue
+            reduced_token = self.map_origin_to_reduced(token)
+            if reduced_token not in v:
+                v.append_token(reduced_token)
+        self.reduced_vocab = v
+            
+
+    def map_origin_to_reduced(self, token: str):
+        if token == self.no_sign_token:
+            return self.no_sign_token
+        if token == self.pad_token:
+            return self.pad_token
+        
+        ret = token[:-1]
+        digit = token[-1]
+        assert int(digit) in [i for i in range(10)]
+        return ret

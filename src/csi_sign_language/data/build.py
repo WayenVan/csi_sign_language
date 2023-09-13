@@ -1,4 +1,4 @@
-from .dataset.phoenix14 import Phoenix14GraphSegDataset
+from .dataset.phoenix14 import *
 from torch.utils.data import Subset, DataLoader
 from omegaconf import OmegaConf, DictConfig
 from .transforms.build_transform import build_transform
@@ -6,11 +6,11 @@ import os
 
 def build_dataset(cfg: DictConfig):
     trans = build_transform(cfg)
-    dataset = Phoenix14GraphSegDataset(
+    dataset = Pheoix14GraphSegDatasetReduced(
         cfg.data.phoenix14_root, 
         cfg.data.graph_subset_root,
         cfg.data.time_length,
-        transformation=trans
+        transform=trans
     )
 
     meta = OmegaConf.load(os.path.join(cfg.data.graph_subset_root, 'meta.yaml'))

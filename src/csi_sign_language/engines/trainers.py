@@ -29,7 +29,7 @@ class Trainner():
         self.model = model
         self.opt = optimizer
         self.train_loader = train_loader
-        self.loss_fn = torch.nn.CrossEntropyLoss()
+        self.loss_fn = torch.nn.NLLLoss()
         self.logger: Logger = _logger.getChild(__class__.__name__)
         self.NUM_CLASS = int(num_class)
         self.device = device
