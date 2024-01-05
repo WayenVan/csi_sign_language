@@ -3,9 +3,9 @@ import torch.nn as nn
 import logging
 def print_nested_children(module, logger: logging.Logger, prefix=''):
     for name, child in module.named_children():
-        print(prefix + name + ':', child)
+        logger.info(f'{prefix}{name}:{child}')
         if isinstance(child, nn.Module):
-            print_nested_children(child, prefix=prefix + '  ')
+            print_nested_children(child, logger, prefix=prefix + '  ')
 
 def print_children(module, logger: logging.Logger, prefix=''):
     for name, child in module.named_children():

@@ -1,11 +1,15 @@
 import torch
 import sys
+
 sys.path.append('src')
-from csi_sign_language.utils import print_children, print_nested_children
-from csi_sign_language.modules.unet import Unet1d
 
-net = torch.hub.load('milesial/Pytorch-UNet', 'unet_carvana', pretrained=True, scale=0.5)
+from csi_sign_language.models.models import *
+from csi_sign_language.utils.inspect import *
+from csi_sign_language.utils.logger import build_logger
 
-x = torch.ones(10, 768, 32)
-net = Unet1d(768, 100)
-print(net(x).shape)
+from torchinfo import summary
+
+logger = build_logger('main', 'experiments/log.log')
+model = ResnetTransformer('haha', 1024, 1, 100)
+summary(model, input_size=(2, 16, 3, 256, 256))
+model.eval()

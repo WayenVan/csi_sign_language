@@ -44,7 +44,7 @@ def stand(x, axis):
 def norm(x, axis):
     mmax = np.max(x, axis, keepdims=True)
     mmin = np.min(x, axis, keepdims=True)
-    return (x - mmin) / (mmax - mmin)
+    return (x - mmin) / (mmax - mmin + 1e-7)
 
 def interp(x: np.array, mask=None):
     """interp the signal of each channel in time
